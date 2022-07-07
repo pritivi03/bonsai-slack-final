@@ -33,7 +33,7 @@ async def getAnswer(question):
         request_data = {
             'question': question
         }
-        async with session.post(api_url + "/getAnswer", data=request_data) as resp:
+        async with session.post(api_url + "/getAnswer/123", data=request_data) as resp:
             json_response = await resp.json()
             answer = json_response['answer']
             return answer    
@@ -43,14 +43,63 @@ async def handle_message_events(body, say, logger):
     event = body['event']
     print(body)
     print(event)
-    question = event['text']
-    
-    await say({'thread_ts': event['ts'], 'text': random.choice(responses_arr)})
-    answer = await getAnswer(question)
-    await say({'thread_ts': event['ts'], 'text': answer})
-    #await say({'thread_ts': event['ts'], 'text': "Second"})
+    if 'text' in event:
+        question = event['text']
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "plain_text",
+                    "text": "Was this helpful?",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "emoji": True,
+                            "text": "👍"
+                        },
+                        "style": "primary",
+                        "value": "click_me_123",
+                        "action_id": "approve_button"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "emoji": True,
+                            "text": "👎"
+                        },
+                        "style": "danger",
+                        "value": "click_me_123",
+                        "action_id": "decline_button"
+                    }
+                ]
+            }
+        ]
+        await say({'thread_ts': event['ts'], 'text': random.choice(responses_arr)})
+        answer = await getAnswer(question)
+        await say({'thread_ts': event['ts'], 'text': answer})
+        if answer != 'No information found. Try rephrasing.':
+            #ask for feedback if the answer was given
+            await say({'thread_ts': event['ts'], 'blocks': blocks})
     return
 
+@app.action("approve_button")
+async def handle_some_action(ack, body, logger):
+    await ack()
+    logger.info(body)
+    print("HELLO WORLD")
+
+@app.action("decline_button")
+async def handle_some_action(ack, body, logger):
+    await ack()
+    logger.info(body)
 
 def main():
     handler = SocketModeHandler(app, SLACK_APP_TOKEN)
